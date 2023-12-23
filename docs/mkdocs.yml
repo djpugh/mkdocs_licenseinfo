@@ -7,12 +7,10 @@ docs_dir: ./source
 site_dir: ./html
 nav:
  - index.md
- - usage.md
  - 'Developing':
     - developing/index.md
-    
     - developing/license.md
-    
+    - developing/sbom.md
     - 'Test Coverage': coverage.md
 
  - 'Issue Tracker': https://github.com/djpugh/mkdocs_licenseinfo/issues
@@ -62,7 +60,7 @@ plugins:
       type: iso_date
   - include-markdown
   # https://github.com/mondeja/mkdocs-include-markdown-plugin
-
+  - mkdocs_licenseinfo
 # https://mkdocstrings.github.io/recipes/#automatic-code-reference-pages
 
 extra:

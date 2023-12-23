@@ -1,4 +1,7 @@
-"""mkdocs_licenseinfo.\n\nmkdocs extension to visualise package dependencies license information\n"""
+"""mkdocs_licenseinfo.
+
+mkdocs extension to visualise package dependencies license information.
+"""
 
 
 def __get_version() -> str:
