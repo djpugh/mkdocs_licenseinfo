@@ -1,0 +1,28 @@
+- context:
+    repo:
+      repo_separator: '-'
+      owner: David J Pugh
+      email: djpugh@gmail.com
+      description: mkdocs extension to visualise package dependencies license information
+      url: https://github.com/djpugh/mkdocs_licenseinfo
+      module_depth: 1
+      name: mkdocs_licenseinfo
+      py_name: mkdocs_licenseinfo
+      py_root: mkdocs_licenseinfo
+      src_path: mkdocs_licenseinfo
+    git:
+      initial_branch_name: main
+      git_flow: true
+      default_branch: develop
+    language: python
+    license: mit
+    recipe:
+      name: nskit.recipes.python.package:PackageRecipe
+      version: 0.0.post1.dev15+ga59b052.d20231223
+      extension_name: python_package
+  nskit_version: 0.0.post1.dev15+ga59b052.d20231223
+  creation_time: '2023-12-23T12:02:29.091116+00:00'
+  recipe:
+    name: nskit.recipes.python.package:PackageRecipe
+    version: 0.0.post1.dev15+ga59b052.d20231223
+    extension_name: python_package
