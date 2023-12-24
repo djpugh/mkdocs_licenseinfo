@@ -1,14 +1,10 @@
 from datetime import datetime
 from functools import wraps
-import json
 import sys
 import unittest
-from unittest.mock import call, DEFAULT, MagicMock, patch
+from unittest.mock import call, DEFAULT, patch
 
-from fastcore.net import HTTP404NotFoundError
-from jinja2 import Environment
 import licensecheck
-from nskit.common.contextmanagers import Env, TestExtension
 
 from mkdocs_licenseinfo import get_licenses as gl_module
 
