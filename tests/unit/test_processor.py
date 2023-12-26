@@ -114,7 +114,7 @@ class ProccesorTestCase(unittest.TestCase):
             fail_licenses=['s', 't'],
             diff='ghi',
             package_template='mno',
-            path=Path('random').resolve()
+            path=Path('random').absolute()
         )
 
 
