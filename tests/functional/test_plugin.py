@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 import webbrowser
 
 from click.testing import CliRunner
-from fastcore.net import HTTP403ForbiddenError, HTTP404NotFoundError
 from mkdocs.__main__ import build_command
 from nskit.common.contextmanagers import ChDir
 
