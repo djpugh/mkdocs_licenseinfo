@@ -1,1 +1,0 @@
-# Using mkdocs_licenseinfo

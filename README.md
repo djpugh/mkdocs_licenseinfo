@@ -25,9 +25,10 @@ Tests can be added to the tests folder
 ### CI
 
 There are a set of CI checks:
-    * lint: ``nox -t lint``
-    * test: ``nox -t test``
-    * build: ``nox -t build``
+
+* lint: ``nox -t lint``
+* test: ``nox -t test``
+* build: ``nox -t build``
 
 specific subfolders can be passed to the test tag in nox: ``nox -t test -- <subfolder1> <subfolder2>``
 
@@ -52,7 +53,9 @@ To create a version, use ``git tag <major>.<minor>.<patch>`` and then make sure 
 or an equivalent tagging tool (e.g. Github releases).
 
 
+# TODO
 
+- [ ] Add sbom file links for serving (::license-embed)
 
 
 ------------

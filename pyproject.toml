@@ -9,7 +9,7 @@ authors = [{name = "David J Pugh", email="djpugh@gmail.com"}]
 maintainers = [{ name = "David J Pugh", email="djpugh@gmail.com" }]
 description = "mkdocs extension to visualise package dependencies license information"
 readme = {file="README.md", content-type = "text/x-rst"}
-keywords = []
+keywords = ["mkdocs", "mkdocs-plugin", "license", "licenseinfo", "documentation", "sbom"]
 requires-python = '>3.7'
 classifiers = [
         "Environment :: Console",
@@ -29,9 +29,14 @@ classifiers = [
         # "Development Status :: 6 - Mature"
 ]
 dependencies = [
-
-
+    'licensecheck',
+    'mkdocs>=1.4',
+    "importlib-metadata>=4.6; python_version < '3.10'",
+    'typing-extensions; python_version < "3.12"',
+    'backports.entry-points-selectable; python_version < "3.10"',
+    'importlib_metadata; python_version < "3.11"',
 ]
+
 dynamic = ["version"]
 
 
@@ -65,6 +70,8 @@ dev-test= [
     "pytest>=7.3.1",
     "pytest-cov>=4",
     "pytest-subtests",
+    "nskit",
+    "mkdocs-material"
     # Run tests in parallel
     # "pytest-xdist"
     ]
@@ -87,7 +94,11 @@ repository = "https://github.com/djpugh/mkdocs_licenseinfo"
 
 [project.scripts]
 
+[project.entry-points."mkdocs.plugins"]
+mkdocs_licenseinfo = "mkdocs_licenseinfo.plugin:MkdocsLicenseInfoPlugin"
 
+[project.entry-points."mkdocs_licenseinfo.jinja_environment_factory"]
+default = "mkdocs_licenseinfo.render_markdown:_EnvironmentFactory.default_environment"
 
 
 # Tools
