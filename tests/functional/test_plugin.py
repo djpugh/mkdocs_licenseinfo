@@ -2,6 +2,7 @@ from datetime import datetime
 from functools import wraps
 import json
 from pathlib import Path
+import sys
 import traceback as tb
 import unittest
 from unittest.mock import MagicMock, patch
@@ -237,7 +238,12 @@ plugins:
             index.write_text(self.index_md)
             runner = CliRunner(echo_stdin=True)
             resp = runner.invoke(build_command, ['-f', str(mkdocs_config)], catch_exceptions=False)
-            self.assertEqual(resp.exit_code, 0, (resp.exc_info[0], resp.exc_info[1], '\n'.join(tb.format_exception(resp.exc_info[1]))))
+            if sys.version_info.major <=3 and sys.version_info.minor < 10:
+                traceback =  tb.format_exception(etype=resp.exc_info[0], value=resp.exc_info[1], tb=resp.exc_info[2])
+            else:
+                traceback =  tb.format_exception(resp.exc_info[1])
+            self.assertTrue(Path('docs', 'html').exists())
+            self.assertEqual(resp.exit_code, 0, (resp.exc_info[0], resp.exc_info[1], '\n'.join(traceback)))
             self.assertTrue(Path('docs', 'html').exists())
 
             index_html = Path('docs', 'html', 'index.html')
