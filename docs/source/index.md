@@ -1,7 +1,7 @@
 mkdocs extension to visualise package dependencies license information
 
 ## Why?
-For software supply chain security and legal compliance, it's important to make it easy to understand a libraries dependencies (and their licenses).
+For software supply chain security and legal compliance, it's important to make it easy to understand a library's dependencies (and their licenses).
 
 ``mkdocs_licenseinfo`` can be used to generate sbom license info in ``mkdocs`` documentation automatically and without needing another commit.
 
