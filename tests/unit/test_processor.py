@@ -7,7 +7,6 @@ from markdown.blockparser import BlockParser
 from nskit.common.contextmanagers import Env
 
 from mkdocs_licenseinfo import extension
-
 from mkdocs_licenseinfo.extension import LicenseInfoProcessor
 
 

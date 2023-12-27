@@ -8,7 +8,6 @@ from jinja2 import Environment
 from nskit.common.contextmanagers import Env, TestExtension
 
 from mkdocs_licenseinfo import get_licenses
-
 from mkdocs_licenseinfo.render_markdown import (
     _EnvironmentFactory,
     get_licenses_as_markdown,

@@ -194,7 +194,6 @@ profile = "appnexus"
 src_paths = ['src/']
 known_first_party = [
     "mkdocs_licenseinfo.*",
-    'mkdocs_licenseinfo*'
 ]
 
 known_application = 'mkdocs_licenseinfo*'
