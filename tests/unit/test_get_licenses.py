@@ -7,7 +7,6 @@ from unittest.mock import call, DEFAULT, patch
 import licensecheck
 
 from mkdocs_licenseinfo import get_licenses as gl_module
-
 from mkdocs_licenseinfo.get_licenses import (
     _split_licenses,
     get_licenses,
