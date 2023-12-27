@@ -42,6 +42,7 @@ from markdown.blockprocessors import BlockProcessor
 from markdown.extensions import Extension
 from mkdocs.utils.yaml import get_yaml_loader, yaml_load
 
+from mkdocs_licenseinfo import logger
 from mkdocs_licenseinfo.render_markdown import get_licenses_as_markdown
 
 if TYPE_CHECKING:
@@ -65,6 +66,7 @@ class LicenseInfoProcessor(BlockProcessor):
 
     def test(self, parent: Element, block: str) -> bool:  # noqa: U100
         """Match the extension instructions."""
+        logger.debug(f'Checking block: {block}')
         return bool(self.regex.search(block))
 
     def run(self, parent: Element, blocks: MutableSequence[str]) -> None:

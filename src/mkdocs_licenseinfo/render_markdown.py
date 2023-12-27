@@ -13,6 +13,7 @@ else:
 
 from jinja2 import Environment
 
+from mkdocs_licenseinfo import logger
 from mkdocs_licenseinfo.get_licenses import get_licenses
 
 PACKAGE_TEMPLATE = "# [{{package.name}}]({{package.homePage}})\n{% for license in package.licenses %}``{{license}}`` {% endfor %} \n*Version Checked: {{package.version}}*  \nAuthor: {{package.author}}"
@@ -77,12 +78,19 @@ def get_licenses_as_markdown(
 ):
     """Get the licenses and render them as markdown strings."""
     jinja_environment = JINJA_ENVIRONMENT_FACTORY.environment
+    logger.debug('Getting licenses')
     packages = get_licenses(using, ignore_packages, fail_packages, skip_packages, ignore_licenses, fail_licenses, path=path)
+    logger.info(f'Found {len(packages)} packages')
+
     diff_packages = []
     if diff:
+        logger.debug('Getting diff licenses')
         diff_packages = get_licenses(diff, ignore_packages, fail_packages, skip_packages, ignore_licenses, fail_licenses, path=path)
+        logger.info(f'Found {len(diff_packages)} diff packages')
     selected_package_names = list({u['name'] for u in packages} - {u['name'] for u in diff_packages})
     selected_packages = [u for u in packages if u['name'] in selected_package_names]
+    logger.info(f'Processing remaining {len(selected_packages)} packages')
     if package_template is None:
         package_template = PACKAGE_TEMPLATE
+    logger.debug('Rendering licenses')
     return [jinja_environment.from_string(package_template).render(package=package) for package in selected_packages]

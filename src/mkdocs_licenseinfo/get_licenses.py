@@ -10,6 +10,8 @@ import sys
 
 import licensecheck
 
+from mkdocs_licenseinfo import logger
+
 
 class UnclosableIO(StringIO):
     """StringIO object that cannot be closed."""
@@ -145,6 +147,7 @@ def get_licenses(
         output=output,
         path=path
     ):
+        logger.info(f'Getting licenses for: {using} in path: {path}')
         licensecheck.cli()
     result = json.loads(output.getvalue())
     output.force_close()
