@@ -59,7 +59,7 @@ class ProccesorTestCase(unittest.TestCase):
 
     @patch.object(extension, 'get_licenses_as_markdown')
     def test_process_block_with_global_config(self, get_licenses_as_markdown):
-        packages = 'Abacus'
+        packages = 'Ipsum'
         get_licenses_as_markdown.return_value = [packages]
         global_config = {
             'ignore_packages': ['a', 'b'],
@@ -89,7 +89,7 @@ class ProccesorTestCase(unittest.TestCase):
 
     @patch.object(extension, 'get_licenses_as_markdown')
     def test_process_block_with_local_config(self, get_licenses_as_markdown):
-        packages = '# Abacus'
+        packages = '# Ipsum'
         get_licenses_as_markdown.return_value = [packages]
         global_config = {
             'ignore_packages': ['a', 'b'],
@@ -104,7 +104,7 @@ class ProccesorTestCase(unittest.TestCase):
         }
         processor = LicenseInfoProcessor(BlockParser(Markdown()), global_config)
         result = processor._process_block('requirements_path: ../random\nbase_indent: 3\nusing: xyz\ndiff: ghi\nignore_packages:\n  - k\n  - l\nfail_packages:\n  - m\n  - n\nskip_packages:\n  - o\n  - p\nignore_licenses:\n  - q\n  - r\nfail_licenses:\n  - s\n  - t\npackage_template: mno')
-        self.assertEqual(result, '#### Abacus')
+        self.assertEqual(result, '###'+packages)
         get_licenses_as_markdown.assert_called_once_with(
             using='xyz',
             ignore_packages=['k', 'l'],
@@ -120,7 +120,7 @@ class ProccesorTestCase(unittest.TestCase):
 
     @patch.object(extension, 'get_licenses_as_markdown')
     def test_process_block_with_env(self, get_licenses_as_markdown):
-        packages = 'Abacus'
+        packages = 'Sit'
         get_licenses_as_markdown.return_value = [packages]
         global_config = {
             'ignore_packages': ['a', 'b'],
@@ -151,11 +151,11 @@ class ProccesorTestCase(unittest.TestCase):
 
     @patch.object(extension, 'get_licenses_as_markdown')
     def test_process_block_with_heading_level(self, get_licenses_as_markdown):
-        packages = '# Abacus'
+        packages = '# Amet'
         get_licenses_as_markdown.return_value = [packages]
         processor = LicenseInfoProcessor(BlockParser(Markdown()), {})
         result = processor._process_block('', 2)
-        self.assertEqual(result, '### Abacus')
+        self.assertEqual(result, '##'+packages)
 
     def test_test_matching(self):
         test_strings = [
@@ -183,7 +183,7 @@ class ProccesorTestCase(unittest.TestCase):
 
     @patch.object(extension, 'get_licenses_as_markdown')
     def test_run_matching_block(self, get_licenses_as_markdown):
-        packages = '# Abacus'
+        packages = '# Consectetur'
         get_licenses_as_markdown.return_value = [packages]
         blocks = ['::licenseinfo', 'b']
         processor = LicenseInfoProcessor(BlockParser(Markdown()), {})
