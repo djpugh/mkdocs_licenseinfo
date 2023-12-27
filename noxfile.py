@@ -70,7 +70,7 @@ def test(session):
     if session.posargs:
         test_folder = [f'tests/{u}' for u in session.posargs]
     else:
-        test_folder = ['tests']
+        test_folder = ['tests/unit']
     session.install('.[dev,dev-test]')
     for folder in test_folder:
         args = []
