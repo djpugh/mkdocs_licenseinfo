@@ -8,7 +8,7 @@ name = "mkdocs_licenseinfo"
 authors = [{name = "David J Pugh", email="djpugh@gmail.com"}]
 maintainers = [{ name = "David J Pugh", email="djpugh@gmail.com" }]
 description = "mkdocs extension to visualise package dependencies license information"
-readme = {file="README.md", content-type = "text/x-rst"}
+readme = {file="README.md", content-type = "text/markdown"}
 keywords = ["mkdocs", "mkdocs-plugin", "license", "licenseinfo", "documentation", "sbom"]
 requires-python = '>3.7'
 classifiers = [
