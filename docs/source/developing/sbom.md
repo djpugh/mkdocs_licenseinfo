@@ -1,11 +1,15 @@
 # Software Bill of Materials
 
-This package is licensed with``MIT LICENSE``
+This package is licensed with the [``MIT License``](license.md)
 
 ## Runtime Dependencies
+These are the dependencies required to run ``mkdocs_licenseinfo``:
+
 ### ::licenseinfo
 
 ## Development Dependencies
+These are the dependencies required for developing ``mkdocs_licenseinfo``:
+
 ### ::licenseinfo
     using: PEP631:dev
     diff: PEP631

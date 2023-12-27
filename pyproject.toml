@@ -83,6 +83,7 @@ dev-docs = [
     "mkdocs-git-authors-plugin",
     "mkdocs-coverage",
     "mkdocs-include-markdown-plugin",
+    "mkdocs-github-changelog",
     "mike"
 ]
 dev-build = [
