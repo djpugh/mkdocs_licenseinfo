@@ -16,25 +16,25 @@ These are the dependencies required for developing ``mkdocs_licenseinfo``:
 
 ### Test Dependencies
 #### ::licenseinfo
-    using: PEP631:dev;dev-test
+    using: PEP631:dev;test
     diff: PEP631:dev
 
 ### Lint Dependencies
 #### ::licenseinfo
-    using: PEP631:dev;dev-lint
+    using: PEP631:dev;lint
     diff: PEP631:dev
 
 ### Security Dependencies
 #### ::licenseinfo
-    using: PEP631:dev;dev-security
+    using: PEP631:dev;security
     diff: PEP631:dev
 
 ### Docs Dependencies
 #### ::licenseinfo
-    using: PEP631:dev;dev-docs
+    using: PEP631:dev;docs
     diff: PEP631:dev
 
 ### Build Dependencies
 #### ::licenseinfo
-    using: PEP631:dev;dev-build
+    using: PEP631:dev;build
     diff: PEP631:dev

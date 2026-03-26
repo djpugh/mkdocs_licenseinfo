@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 class PluginConfig(Config):
     """Configuration options for `mkdocs_github_changelog` in `mkdocs.yml`."""
+
     ignore_packages = opt.Optional(opt.ListOfItems(opt.Type(str)))
     """Packages to ignore."""
     fail_packages = opt.Optional(opt.ListOfItems(opt.Type(str)))

@@ -1,0 +1,15 @@
+version: '3'
+
+vars:
+  MKDOCS_CONFIG: docs/mkdocs.yml
+
+tasks:
+  serve:
+    desc: Serve the documentation locally.
+    cmds:
+      - uv run mkdocs serve --config-file {{.MKDOCS_CONFIG}}
+
+  build:
+    desc: Build the documentation.
+    cmds:
+      - uv run mkdocs build --config-file {{.MKDOCS_CONFIG}}

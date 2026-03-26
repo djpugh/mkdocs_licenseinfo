@@ -19,6 +19,10 @@ exclude_docs: |
   mkdocs.yml
 theme:
   name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: indigo
   # icon:
   #  logo: material/family-tree
   # favicon: assets/images/favicon.ico
