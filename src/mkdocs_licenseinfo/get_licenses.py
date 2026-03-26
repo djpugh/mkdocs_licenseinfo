@@ -24,6 +24,8 @@ from urllib.request import urlopen
 
 from mkdocs_licenseinfo import logger
 
+PYPROJECT_TOML = "pyproject.toml"
+
 
 def _parse_using(using: str) -> tuple[list[str], list[str], list[str]]:
     """Parse the legacy 'using' parameter into requirements_paths, groups, and extras.
@@ -45,8 +47,8 @@ def _parse_using(using: str) -> tuple[list[str], list[str], list[str]]:
     if ":" in using:
         _, groups_str = using.split(":", 1)
         groups = [g.strip() for g in groups_str.split(";") if g.strip()]
-        return ["pyproject.toml"], groups, []
-    return ["pyproject.toml"], [], []
+        return [PYPROJECT_TOML], groups, []
+    return [PYPROJECT_TOML], [], []
 
 
 def _read_deps_from_pyproject(
@@ -291,6 +293,24 @@ def _split_licenses(package: dict) -> None:
     package["licenses"] = [u.strip() for u in package["license"].split(";;")]
 
 
+def _collect_dep_specifiers(
+    requirements_paths: list[str],
+    groups: list[str],
+) -> list[str]:
+    """Collect dependency specifiers from requirement sources."""
+    dep_specifiers = []
+    for req_path_str in requirements_paths:
+        req_path = Path(req_path_str)
+        if not req_path.exists():
+            logger.warning(f"Requirements path not found: {req_path}")
+            continue
+        if req_path.name == PYPROJECT_TOML:
+            dep_specifiers.extend(_read_deps_from_pyproject(req_path, groups))
+        else:
+            dep_specifiers.extend(_read_deps_from_requirements(req_path))
+    return dep_specifiers
+
+
 def get_licenses(
     using: str = "PEP631",
     ignore_packages: list[str] | None = None,
@@ -325,34 +345,15 @@ def get_licenses(
     try:
         logger.info(f"Getting licenses for: {using} in path: {path}")
         requirements_paths, groups, _extras = _parse_using(using)
-
-        # Collect dependency specifiers
-        dep_specifiers = []
-        for req_path_str in requirements_paths:
-            req_path = Path(req_path_str)
-            if not req_path.exists():
-                logger.warning(f"Requirements path not found: {req_path}")
-                continue
-            if req_path.name == "pyproject.toml":
-                dep_specifiers.extend(_read_deps_from_pyproject(req_path, groups))
-            else:
-                dep_specifiers.extend(_read_deps_from_requirements(req_path))
+        dep_specifiers = _collect_dep_specifiers(requirements_paths, groups)
 
         if not dep_specifiers:
             logger.warning("No dependencies found")
             return []
 
-        # Resolve to concrete packages
         resolved = _resolve_deps(dep_specifiers)
+        skip_set = {n.lower() for n in (ignore_packages or [])} | {n.lower() for n in (skip_packages or [])}
 
-        # Build ignore/skip set
-        skip_set = set()
-        for name in ignore_packages or []:
-            skip_set.add(name.lower())
-        for name in skip_packages or []:
-            skip_set.add(name.lower())
-
-        # Get info for each package
         packages = []
         for name, version, needed_by in sorted(resolved):
             if name.lower() in skip_set:
