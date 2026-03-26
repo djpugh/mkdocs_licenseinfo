@@ -8,9 +8,10 @@ The specifics can be configured with YAML configuration in the block, and includ
 ```yaml
 ::license_check
 
-    # The information on what to use for requirments (see the [licensecheck docs](https://pypi.org/project/licensecheck/#configuration-example)) - default is PEP631 (pyproject.toml)
+    # The requirements source specification - default is PEP631 (pyproject.toml).
+    # Supports PEP631, PEP631:<group1>;<group2>, or requirements:<path>
     using: <PEP631:dev;dev-test>
-    # Packages to remove (see the [licensecheck docs](https://pypi.org/project/licensecheck/#configuration-example)) - default is None, the packages in this are not shown in the section
+    # Packages to remove from the output - default is None, the packages in this are not shown in the section
     diff: <PEP631>
     # A list of packages to ignore
     ignore_packages: <list of packages>
@@ -33,9 +34,10 @@ The specifics can be configured with YAML configuration in the block, and includ
 
 from __future__ import annotations
 
-from pathlib import Path
 import re
-from typing import Any, MutableSequence, TYPE_CHECKING
+from collections.abc import MutableSequence
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from xml.etree.ElementTree import Element  # nosec: B405
 
 from markdown.blockprocessors import BlockProcessor
@@ -64,9 +66,9 @@ class LicenseInfoProcessor(BlockProcessor):
         super().__init__(parser=parser)
         self._config = config
 
-    def test(self, parent: Element, block: str) -> bool:  # noqa: U100
+    def test(self, parent: Element, block: str) -> bool:  # noqa: ARG002
         """Match the extension instructions."""
-        logger.debug(f'Checking block: {block}')
+        logger.debug(f"Checking block: {block}")
         return bool(self.regex.search(block))
 
     def run(self, parent: Element, blocks: MutableSequence[str]) -> None:
@@ -103,32 +105,34 @@ class LicenseInfoProcessor(BlockProcessor):
         config = yaml_load(yaml_block, loader=get_yaml_loader()) or {}
         if heading_level is None:
             heading_level = 0
-        base_indent = config.get('base_indent', heading_level)
-        using = config.get('using', None)
-        diff = config.get('diff', None)
-        ignore_packages = config.get('ignore_packages', self._config.get('ignore_packages', None))
-        fail_packages = config.get('fail_packages', self._config.get('fail_packages', None))
-        skip_packages = config.get('skip_packages', self._config.get('skip_packages', None))
-        ignore_licenses = config.get('ignore_licenses', self._config.get('ignore_licenses', None))
-        fail_licenses = config.get('fail_licenses', self._config.get('fail_licenses', None))
-        package_template = config.get('package_template', self._config.get('package_template', None))
-        requirements_path = config.get('requirements_path', self._config.get('requirements_path', None))
+        base_indent = config.get("base_indent", heading_level)
+        using = config.get("using", None)
+        diff = config.get("diff", None)
+        ignore_packages = config.get("ignore_packages", self._config.get("ignore_packages", None))
+        fail_packages = config.get("fail_packages", self._config.get("fail_packages", None))
+        skip_packages = config.get("skip_packages", self._config.get("skip_packages", None))
+        ignore_licenses = config.get("ignore_licenses", self._config.get("ignore_licenses", None))
+        fail_licenses = config.get("fail_licenses", self._config.get("fail_licenses", None))
+        package_template = config.get("package_template", self._config.get("package_template", None))
+        requirements_path = config.get("requirements_path", self._config.get("requirements_path", None))
         if requirements_path:
-            requirements_path = (Path(self._config.get('docs_dir', '.')) / Path(requirements_path)).resolve()
-        block = '\n\n'.join(get_licenses_as_markdown(
-            using=using,
-            ignore_packages=ignore_packages,
-            fail_packages=fail_packages,
-            skip_packages=skip_packages,
-            ignore_licenses=ignore_licenses,
-            fail_licenses=fail_licenses,
-            diff=diff,
-            package_template=package_template,
-            path=requirements_path
-            ))
+            requirements_path = (Path(self._config.get("docs_dir", ".")) / Path(requirements_path)).resolve()
+        block = "\n\n".join(
+            get_licenses_as_markdown(
+                using=using,
+                ignore_packages=ignore_packages,
+                fail_packages=fail_packages,
+                skip_packages=skip_packages,
+                ignore_licenses=ignore_licenses,
+                fail_licenses=fail_licenses,
+                diff=diff,
+                package_template=package_template,
+                path=requirements_path,
+            )
+        )
         # We need to decrease/increase the base indent level
         if base_indent > 0:
-            block = block.replace('# ', ('#'*base_indent)+'# ')
+            block = block.replace("# ", ("#" * base_indent) + "# ")
         return block
 
 

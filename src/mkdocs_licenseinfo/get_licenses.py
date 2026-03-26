@@ -1,158 +1,347 @@
-"""Get licenseinfo."""
+"""Get licence information for packages."""
+
 from __future__ import annotations
 
-from contextlib import ContextDecorator
-from io import StringIO
 import json
 import os
-from pathlib import Path
+import re
+import subprocess  # nosec B404
 import sys
+from email.header import decode_header
+from pathlib import Path
 
-import licensecheck
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    try:
+        import tomllib
+    except ModuleNotFoundError:
+        import tomli as tomllib  # type: ignore[no-redef]
+
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import metadata as get_metadata
+from urllib.request import urlopen
 
 from mkdocs_licenseinfo import logger
 
 
-class UnclosableIO(StringIO):
-    """StringIO object that cannot be closed."""
+def _parse_using(using: str) -> tuple[list[str], list[str], list[str]]:
+    """Parse the legacy 'using' parameter into requirements_paths, groups, and extras.
 
-    def close(self):
-        """Don't close it."""
+    Supports formats:
+        - ``PEP631`` — read from pyproject.toml
+        - ``PEP631:dev;dev-test`` — read from pyproject.toml with groups
+        - ``requirements:path/to/requirements.txt`` — read from requirements file
+
+    Args:
+        using: The using specification string.
+
+    Returns:
+        Tuple of (requirements_paths, groups, extras).
+    """
+    if using.startswith("requirements:"):
+        paths = using.split(":", 1)[1]
+        return [p.strip() for p in paths.split(";") if p.strip()], [], []
+    if ":" in using:
+        _, groups_str = using.split(":", 1)
+        groups = [g.strip() for g in groups_str.split(";") if g.strip()]
+        return ["pyproject.toml"], groups, []
+    return ["pyproject.toml"], [], []
+
+
+def _read_deps_from_pyproject(
+    pyproject_path: Path,
+    groups: list[str],
+) -> list[str]:
+    """Read dependency names from a pyproject.toml file.
+
+    Args:
+        pyproject_path: Path to the pyproject.toml file.
+        groups: Optional dependency groups to include.
+
+    Returns:
+        List of dependency specifier strings.
+    """
+    with open(pyproject_path, "rb") as f:
+        data = tomllib.load(f)
+    deps = list(data.get("project", {}).get("dependencies", []))
+    optional_deps = data.get("project", {}).get("optional-dependencies", {})
+    dep_groups = data.get("dependency-groups", {})
+    for group in groups:
+        group_deps = optional_deps.get(group, dep_groups.get(group, []))
+        # Filter out dependency-group include directives (dicts like {include-group = "..."})
+        deps.extend(d for d in group_deps if isinstance(d, str))
+    return deps
+
+
+def _read_deps_from_requirements(req_path: Path) -> list[str]:
+    """Read dependency specifiers from a requirements.txt file.
+
+    Args:
+        req_path: Path to the requirements file.
+
+    Returns:
+        List of dependency specifier strings.
+    """
+    deps = []
+    for line in req_path.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and not line.startswith("-"):
+            deps.append(line)
+    return deps
+
+
+def _resolve_deps(dep_specifiers: list[str]) -> list[tuple[str, str, list[str]]]:
+    """Resolve dependency specifiers to concrete name-version pairs using uv.
+
+    Falls back to parsing specifiers directly if uv is not available.
+
+    Args:
+        dep_specifiers: List of PEP 508 dependency strings.
+
+    Returns:
+        List of (name, version, needed_by) tuples.
+    """
+    try:
+        result = subprocess.run(  # nosec B603
+            [sys.executable, "-m", "uv", "pip", "compile", "--no-header", "-"],
+            input="\n".join(dep_specifiers),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode == 0:
+            packages = []
+            current_pkg = None
+            via = []
+            for line in result.stdout.splitlines():
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                match = re.match(r"^([a-zA-Z0-9_.-]+)==([^\s;]+)", stripped)
+                if match:
+                    if current_pkg:
+                        packages.append((*current_pkg, via))
+                    current_pkg = (match.group(1), match.group(2))
+                    via = []
+                elif stripped.startswith("# via") and current_pkg:
+                    # "# via mkdocs" or "# via"
+                    rest = stripped[5:].strip()
+                    if rest:
+                        via.append(rest)
+                elif stripped.startswith("#") and current_pkg:
+                    # continuation: "#   jinja2"
+                    dep = stripped.lstrip("#").strip()
+                    if dep:
+                        via.append(dep)
+            if current_pkg:
+                packages.append((*current_pkg, via))
+            return packages
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
-    def force_close(self):
-        """Force close it."""
-        super().close()
-
-    def __del__(self, *args, **kwargs):
-        """Make sure it closes."""
-        self.force_close()
-        super().__del__(*args, **kwargs)
-
-
-class LicenseCheckArgs(ContextDecorator):
-    """Context manager for setting licensecheck args."""
-
-    def __init__(
-        self,
-        using='PEP631',
-        format='json',
-        ignore_packages=None,
-        fail_packages=None,
-        skip_packages=None,
-        ignore_licenses=None,
-        fail_licenses=None,
-        output=None,
-        path=None
-    ):
-        """Initialise the context manager.
-
-        Keyword Args:
-            target_dir (Optional[Path]): the target directory
-        """
-        self._original_args = None
-        if output is None:
-            output = UnclosableIO()
-        self._output = output
-        self._stdout = None
-        self._using = using
-        self._format = format
-        if ignore_packages is None:
-            ignore_packages = []
-        self._ignore_packages = ignore_packages
-        if fail_packages is None:
-            fail_packages = []
-        self._fail_packages = fail_packages
-        if skip_packages is None:
-            skip_packages = []
-        self._skip_packages = skip_packages
-        if ignore_licenses is None:
-            ignore_licenses = []
-        self._ignore_licenses = ignore_licenses
-        if fail_licenses is None:
-            fail_licenses = []
-        self._fail_licenses = fail_licenses
-        self._original_path = None
-        if path:
-            path = Path(path)
-        self._path = path
-
-    def __enter__(self):
-        """Change to the set argv."""
-        self._original_args = sys.argv[:]
-        new_args = [
-            'licensecheck',
-            '-u',
-            self._using,
-            '--format',
-            self._format]
-        for package in self._ignore_packages:
-            new_args.append('--ignore-packages')
-            new_args.append(package)
-        for package in self._fail_packages:
-            new_args.append('--fail-packages')
-            new_args.append(package)
-        for package in self._skip_packages:
-            new_args.append('--skip-dependencies')
-            new_args.append(package)
-        for package in self._ignore_licenses:
-            new_args.append('--ignore-licenses')
-            new_args.append(package)
-        for package in self._fail_licenses:
-            new_args.append('--fail-licenses')
-            new_args.append(package)
-        self._stdout = licensecheck.stdout
-        licensecheck.stdout = self._output
-        sys.argv = new_args
-        if self._path:
-            self._original_path = Path.cwd()
-            os.chdir(str(self._path))
-
-    def __exit__(self, exc_type, exc_val, exc_tb):  # noqa: U100
-        """Reset to the original argv."""
-        sys.argv = self._original_args[:]
-        licensecheck.stdout = self._stdout
-        if self._path:
-            os.chdir(str(self._original_path))
-        # Handle SystemExit
-        if isinstance(exc_val, SystemExit) and exc_val.code == 0:
-            return True
+    # Fallback: just extract package names, look up installed versions
+    packages = []
+    for spec in dep_specifiers:
+        name = re.split(r"[><=!;\[\s]", spec)[0].strip()
+        if name:
+            try:
+                meta = get_metadata(name)
+                packages.append((meta["Name"], meta["Version"], []))
+            except PackageNotFoundError:
+                packages.append((name, "unknown", []))
+    return packages
 
 
-def _split_licenses(package):
-    package['licenses'] = [u.strip() for u in package['license'].split(';;')]
+def _decode_header(value: str) -> str:
+    """Decode RFC 2047 encoded header values."""
+    parts = decode_header(value)
+    return "".join(part.decode(charset or "utf-8") if isinstance(part, bytes) else part for part, charset in parts)
+
+
+def _get_licence_from_metadata(meta) -> str:
+    """Extract the licence string from package metadata.
+
+    Checks License-Expression (PEP 639), License field, and classifiers.
+
+    Args:
+        meta: Package metadata object.
+
+    Returns:
+        Licence string.
+    """
+    # PEP 639
+    license_expr = meta.get("License-Expression")
+    if license_expr and license_expr.strip():
+        return license_expr.strip().upper()
+    # Legacy License field
+    license_field = meta.get("License")
+    if license_field and license_field.strip() and len(license_field.strip()) < 200:
+        return license_field.strip().upper()
+    # Classifiers
+    classifiers = meta.get_all("Classifier") or []
+    license_classifiers = [c.split(" :: ")[-1] for c in classifiers if c.startswith("License ::")]
+    if license_classifiers:
+        return ";; ".join(c.upper() for c in license_classifiers)
+    return "UNKNOWN"
+
+
+def _get_package_info(name: str, version: str) -> dict:
+    """Get package information from installed metadata or PyPI.
+
+    Args:
+        name: Package name.
+        version: Package version.
+
+    Returns:
+        Dictionary with package information.
+    """
+    try:
+        meta = get_metadata(name)
+        home_page = meta.get("Home-page") or ""
+        if not home_page:
+            urls = meta.get_all("Project-URL") or []
+            for url_entry in urls:
+                if "," in url_entry:
+                    label, url = url_entry.split(",", 1)
+                    label = label.strip().lower()
+                    if label in ("homepage", "home", "repository", "source"):
+                        home_page = url.strip()
+                        break
+            if not home_page and urls:
+                home_page = urls[0].split(",", 1)[-1].strip() if "," in urls[0] else ""
+        author = meta.get("Author") or ""
+        if not author:
+            author = meta.get("Author-email") or ""
+        author = _decode_header(author) if author else ""
+        author = re.sub(r"\s*<[^>]+>", "", author).strip()
+        license_str = _get_licence_from_metadata(meta)
+        return {
+            "name": meta["Name"],
+            "version": meta["Version"],
+            "homePage": home_page,
+            "author": author,
+            "license": license_str,
+        }
+    except PackageNotFoundError:
+        return _get_package_info_from_pypi(name, version)
+
+
+def _get_package_info_from_pypi(name: str, version: str) -> dict:
+    """Fetch package information from PyPI as a fallback.
+
+    Args:
+        name: Package name.
+        version: Package version.
+
+    Returns:
+        Dictionary with package information.
+    """
+    info = {
+        "name": name,
+        "version": version,
+        "homePage": "",
+        "author": "",
+        "license": "UNKNOWN",
+    }
+    try:
+        url = f"https://pypi.org/pypi/{name}/{version}/json"
+        with urlopen(url, timeout=10) as resp:  # nosec B310
+            data = json.loads(resp.read())
+        pypi_info = data.get("info", {})
+        info["author"] = pypi_info.get("author") or pypi_info.get("author_email") or ""
+        info["author"] = re.sub(r"\s*<[^>]+>", "", info["author"]).strip()
+        info["homePage"] = pypi_info.get("home_page") or pypi_info.get("project_url") or ""
+        license_str = pypi_info.get("license") or ""
+        if license_str and len(license_str.strip()) < 200:
+            info["license"] = license_str.strip().upper()
+        elif pypi_info.get("classifiers"):
+            lc = [c.split(" :: ")[-1] for c in pypi_info["classifiers"] if c.startswith("License ::")]
+            if lc:
+                info["license"] = ";; ".join(c.upper() for c in lc)
+    except Exception:
+        logger.debug(f"Failed to fetch PyPI info for {name}=={version}")
+    return info
+
+
+def _split_licenses(package: dict) -> None:
+    """Split the licence string into a list of individual licences."""
+    package["licenses"] = [u.strip() for u in package["license"].split(";;")]
 
 
 def get_licenses(
-    using='PEP631',
-    ignore_packages=None,
-    fail_packages=None,
-    skip_packages=None,
-    ignore_licenses=None,
-    fail_licenses=None,
-    path=None
-):
-    """Get the licenses using licensecheck."""
-    output = UnclosableIO()
+    using: str = "PEP631",
+    ignore_packages: list[str] | None = None,
+    fail_packages: list[str] | None = None,
+    skip_packages: list[str] | None = None,
+    ignore_licenses: list[str] | None = None,
+    fail_licenses: list[str] | None = None,
+    path: str | None = None,
+) -> list[dict]:
+    """Get the licences for dependencies.
+
+    Args:
+        using: Requirements source specification.
+        ignore_packages: Packages to ignore (excluded from results).
+        fail_packages: Unused, kept for API compatibility.
+        skip_packages: Packages to skip (excluded from results).
+        ignore_licenses: Unused, kept for API compatibility.
+        fail_licenses: Unused, kept for API compatibility.
+        path: Path to the directory containing the requirements file.
+
+    Returns:
+        List of package dictionaries with licence information.
+    """
     if using is None:
-        using = 'PEP631'
-    with LicenseCheckArgs(
-        using=using,
-        format='json',
-        ignore_packages=ignore_packages,
-        fail_packages=fail_packages,
-        skip_packages=skip_packages,
-        ignore_licenses=ignore_licenses,
-        fail_licenses=fail_licenses,
-        output=output,
-        path=path
-    ):
-        logger.info(f'Getting licenses for: {using} in path: {path}')
-        licensecheck.cli()
-    result = json.loads(output.getvalue())
-    output.force_close()
-    # Loop over the results and clean the licenses
-    packages = result['packages']
-    for package in packages:
-        _split_licenses(package)
-    return packages
+        using = "PEP631"
+
+    original_path = None
+    if path:
+        original_path = Path.cwd()
+        os.chdir(str(path))
+
+    try:
+        logger.info(f"Getting licenses for: {using} in path: {path}")
+        requirements_paths, groups, _extras = _parse_using(using)
+
+        # Collect dependency specifiers
+        dep_specifiers = []
+        for req_path_str in requirements_paths:
+            req_path = Path(req_path_str)
+            if not req_path.exists():
+                logger.warning(f"Requirements path not found: {req_path}")
+                continue
+            if req_path.name == "pyproject.toml":
+                dep_specifiers.extend(_read_deps_from_pyproject(req_path, groups))
+            else:
+                dep_specifiers.extend(_read_deps_from_requirements(req_path))
+
+        if not dep_specifiers:
+            logger.warning("No dependencies found")
+            return []
+
+        # Resolve to concrete packages
+        resolved = _resolve_deps(dep_specifiers)
+
+        # Build ignore/skip set
+        skip_set = set()
+        for name in ignore_packages or []:
+            skip_set.add(name.lower())
+        for name in skip_packages or []:
+            skip_set.add(name.lower())
+
+        # Get info for each package
+        packages = []
+        for name, version, needed_by in sorted(resolved):
+            if name.lower() in skip_set:
+                continue
+            pkg = _get_package_info(name, version)
+            pkg["neededBy"] = needed_by
+            pkg["direct"] = len(needed_by) == 0
+            _split_licenses(pkg)
+            packages.append(pkg)
+
+        return packages
+    finally:
+        if original_path:
+            os.chdir(str(original_path))
