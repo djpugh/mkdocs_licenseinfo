@@ -372,24 +372,14 @@ jobs:
       - name: Install dependencies
         run: task setup
 
-      - name: Configure Git
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-
       - name: Build docs
-        id: build_docs
-        run: uv run nox -t docs
-
-      - name: Select Branch
-        run: git checkout ${{ steps.build_docs.outputs.branch_name}}
+        run: task docs:build
 
       - name: Store Docs Artifact
         uses: actions/upload-artifact@v7
         with:
           name: docs
-          path: |
-            .
+          path: docs/html
 
   test-build:
     name: Test Build Python ${{ matrix.py }} - ${{ matrix.os }} (${{ github.event_name }})
