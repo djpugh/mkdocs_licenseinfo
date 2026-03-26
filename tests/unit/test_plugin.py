@@ -2,9 +2,9 @@ import unittest
 
 from mkdocs.config.base import ValidationError
 from mkdocs.config.defaults import MkDocsConfig
-from nskit.common.contextmanagers import Env
 
 from mkdocs_licenseinfo.plugin import LicenseInfoExtension, MkdocsLicenseInfoPlugin
+from mkdocs_licenseinfo.utilities import Env
 
 
 class MkdocsLicenseInfoPluginTestCase(unittest.TestCase):
