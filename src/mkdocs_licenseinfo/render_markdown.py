@@ -47,9 +47,17 @@ class _EnvironmentFactory:
         """Get the environment object based on the env var."""
         selected_method = os.environ.get("MKDOCS_LICENSEINFO_JINJA_ENVIRONMENT_FACTORY", None)
         if selected_method is None or selected_method.lower() == "default":
-            # This is our simple implementation
             selected_method = "default"
-        for ep in entry_points(group="mkdocs_licenseinfo.jinja_environment_factory"):
+        eps = entry_points()
+        group = "mkdocs_licenseinfo.jinja_environment_factory"
+        # entry_points(group=...) keyword form only works on 3.12+
+        if isinstance(eps, dict):
+            group_eps = eps.get(group, [])
+        elif hasattr(eps, "select"):
+            group_eps = eps.select(group=group)
+        else:
+            group_eps = [ep for ep in eps if ep.group == group]
+        for ep in group_eps:
             if ep.name == selected_method:
                 return ep.load()()
 
