@@ -59,7 +59,6 @@ test = [
     "pytest>=7.3.1",
     "pytest-cov>=4",
     "pytest-subtests",
-    "nskit",
     "mkdocs-material",
 ]
 docs = [

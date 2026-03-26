@@ -5,12 +5,12 @@ from functools import wraps
 from unittest.mock import DEFAULT, MagicMock, call, patch
 
 from jinja2 import Environment
-from nskit.common.contextmanagers import Env, TestExtension
 
 from mkdocs_licenseinfo.render_markdown import (
     _EnvironmentFactory,
     get_licenses_as_markdown,
 )
+from mkdocs_licenseinfo.utilities import Env, TestExtension
 
 
 class EnvironmentFactoryTestCase(unittest.TestCase):
