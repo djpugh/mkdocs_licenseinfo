@@ -45,6 +45,7 @@ dev = [
 ]
 lint = [
     "ruff>=0.1.0",
+    "pre-commit",
 ]
 security = [
     "pip-audit",

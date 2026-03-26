@@ -172,7 +172,7 @@ jobs:
       with:
         python-version: ${{ matrix.py }}
     - name: Install dependencies
-      run: uv sync
+      run: task setup
     - name: Run Test Suite
       run: task test -- --junitxml reports/${{ matrix.py }}-${{ matrix.os }}-test.xml --cov=mkdocs_licenseinfo --cov-report xml:reports/coverage.xml --cov-report html:reports/htmlcov
       env:
@@ -368,7 +368,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: uv sync
+        run: task setup
 
       - name: Configure Git
         run: |
@@ -511,7 +511,7 @@ jobs:
             echo "tag_exists=false" >> $GITHUB_OUTPUT
           fi
       - name: Install dependencies
-        run: uv sync
+        run: task setup
       - name: Deploy
         run: |
           git config user.name github-actions
