@@ -1,6 +1,6 @@
 name: Pipeline
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
   release:
     types: [published]
@@ -28,6 +28,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v6
       with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
         fetch-depth: 0
     - name: Get changed files in the src folder
       id: src-changed
@@ -109,10 +110,12 @@ jobs:
     needs:
       - changes
     if: >
-      github.event_name == 'pull_request' &&
+      github.event_name == 'pull_request_target' &&
       (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.tools)
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Install Task
@@ -136,7 +139,7 @@ jobs:
     needs:
       - changes
     if: >
-      github.event_name == 'pull_request' &&
+      github.event_name == 'pull_request_target' &&
       (needs.changes.outputs.src || needs.changes.outputs.tests || needs.changes.outputs.root || needs.changes.outputs.workflows)
 
     strategy:
@@ -154,6 +157,8 @@ jobs:
           - "3.13"
     steps:
     - uses: actions/checkout@v6
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
     - name: Install uv
       uses: astral-sh/setup-uv@v5
     - name: Install Task
@@ -215,12 +220,13 @@ jobs:
     needs:
       - changes
     if: >
-      github.event_name == 'pull_request' &&
+      github.event_name == 'pull_request_target' &&
       (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows)
 
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
@@ -241,24 +247,23 @@ jobs:
     needs:
       - changes
     if: >
-      github.event_name == 'pull_request' &&
+      github.event_name == 'pull_request_target' &&
       (needs.changes.outputs.root || needs.changes.outputs.workflows)
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-
       - name: compile requirements.txt
         run: |
           uv pip compile pyproject.toml -o requirements.txt
           cat requirements.txt
-
       - name: Run FOSSA scan and upload build data
         uses: fossa-contrib/fossa-action@v3
         with:
@@ -271,7 +276,7 @@ jobs:
     needs:
       - changes
     if: >
-      github.event_name == 'pull_request' &&
+      github.event_name == 'pull_request_target' &&
       (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows)
     permissions:
       actions: read
@@ -280,6 +285,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v6
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v4
@@ -300,6 +307,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           clean: true
           fetch-depth: 0
       - name: Install uv
@@ -326,12 +334,13 @@ jobs:
     needs:
       - changes
     if: >
-      github.event_name == 'pull_request' &&
+      github.event_name == 'pull_request_target' &&
       (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.docs || needs.changes.outputs.workflows)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -378,6 +387,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           path: ./repo
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -445,6 +455,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -469,6 +481,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v5
