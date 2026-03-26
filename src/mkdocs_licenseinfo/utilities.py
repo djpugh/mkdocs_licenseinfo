@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sys
 from contextlib import ContextDecorator
-from importlib.metadata import Distribution, EntryPoint, MetadataPathFinder
+from importlib.metadata import Distribution, MetadataPathFinder
 from pathlib import Path
 from typing import Any
 
@@ -38,38 +38,44 @@ class Env(ContextDecorator):
                 for key in self._remove:
                     os.environ.pop(key, None)
 
-    def __exit__(self, *args, **kwargs):
+    def __exit__(self, *args: Any, **kwargs: Any) -> None:
         """Reset to the original environment variables."""
         if self._original is not None:
             os.environ.clear()
             os.environ.update(self._original)
 
 
-class _TestEntrypoint(EntryPoint):
+class _TestEntrypoint:
     """A fake entry point for testing."""
 
-    def __init__(self, name: str, group: str, entrypoint: type):
-        super().__init__(name, f"{entrypoint.__module__}:{entrypoint.__name__}", group)
+    def __init__(self, name: str, group: str, entrypoint: Any):
+        self.name = name
+        self.group = group
+        self.value = f"{entrypoint.__module__}:{entrypoint.__name__}"
         self._entrypoint = entrypoint
-        self._sys_meta_path: list | None = None
+        self._sys_meta_path: list[Any] | None = None
 
-    def __setattr__(self, name: str, value: Any) -> None:
-        return object.__setattr__(self, name, value)
-
-    def load(self):
+    def load(self) -> Any:
         """Return the entrypoint object."""
         return self._entrypoint
 
-    def start(self):
+    def matches(self, **params: Any) -> bool:
+        """Check if this entry point matches the given parameters."""
+        for key, value in params.items():
+            if getattr(self, key, None) != value:
+                return False
+        return True
+
+    def start(self) -> None:
         """Register the fake entry point."""
         self._sys_meta_path = sys.meta_path[:]
         nested = [u for u in sys.meta_path if isinstance(u, _TestExtensionFinder)]
         if nested:
             nested[0]._entrypoints.append(self)
         else:
-            sys.meta_path.append(_TestExtensionFinder(self))
+            sys.meta_path.append(_TestExtensionFinder(self))  # type: ignore[arg-type]
 
-    def stop(self):
+    def stop(self) -> None:
         """Unregister the fake entry point."""
         if self._sys_meta_path is not None:
             sys.meta_path = self._sys_meta_path[:]
@@ -78,17 +84,17 @@ class _TestEntrypoint(EntryPoint):
 class _DummyDistribution(Distribution):
     """A fake distribution for testing."""
 
-    def __init__(self, i: int, entrypoint: EntryPoint):
+    def __init__(self, i: int, entrypoint: _TestEntrypoint):
         self._entrypoint = entrypoint
         self._i = i
 
     @property
-    def metadata(self):
+    def metadata(self) -> dict[str, str]:
         """Return fake metadata."""
         return {"Name": f"DummyDistribution{self._i}"}
 
     @property
-    def entry_points(self):
+    def entry_points(self) -> list[_TestEntrypoint]:
         """Return the fake entry points."""
         return [self._entrypoint]
 
@@ -104,10 +110,10 @@ class _DummyDistribution(Distribution):
 class _TestExtensionFinder(MetadataPathFinder):
     """A fake metadata finder for testing entry points."""
 
-    def __init__(self, entrypoint: EntryPoint):
-        self._entrypoints = [entrypoint]
+    def __init__(self, entrypoint: _TestEntrypoint):
+        self._entrypoints: list[_TestEntrypoint] = [entrypoint]
 
-    def find_distributions(self, *args, **kwargs):
+    def find_distributions(self, *args: Any, **kwargs: Any) -> list[_DummyDistribution]:
         """Return fake distributions."""
         return [_DummyDistribution(i, ep) for i, ep in enumerate(self._entrypoints)]
 
@@ -115,14 +121,14 @@ class _TestExtensionFinder(MetadataPathFinder):
 class TestExtension(ContextDecorator):
     """Context manager for faking an entry point in tests."""
 
-    def __init__(self, name: str, group: str, entrypoint: type):
+    def __init__(self, name: str, group: str, entrypoint: Any):
         """Initialise the context manager."""
         self.ep = _TestEntrypoint(name=name, group=group, entrypoint=entrypoint)
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """Add the fake entry point."""
         self.ep.start()
 
-    def __exit__(self, *args, **kwargs):
+    def __exit__(self, *args: Any, **kwargs: Any) -> None:
         """Remove the fake entry point."""
         self.ep.stop()
