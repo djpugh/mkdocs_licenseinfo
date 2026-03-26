@@ -55,7 +55,6 @@ plugins:
       canonical_version: latest
   # https://github.com/pawamoy/mkdocs-coverage
   - coverage:
-      page_name: coverage  # default
       html_report_dir: reports/htmlcov
   # https://github.com/timvink/mkdocs-git-revision-date-localized-plugin
   - git-revision-date-localized:
