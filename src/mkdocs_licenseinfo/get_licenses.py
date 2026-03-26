@@ -186,6 +186,31 @@ def _get_licence_from_metadata(meta) -> str:
     return "UNKNOWN"
 
 
+def _get_home_page(meta) -> str:
+    """Extract the home page URL from package metadata."""
+    home_page = meta.get("Home-page") or ""
+    if home_page:
+        return home_page
+    urls = meta.get_all("Project-URL") or []
+    for url_entry in urls:
+        if "," in url_entry:
+            label, url = url_entry.split(",", 1)
+            if label.strip().lower() in ("homepage", "home", "repository", "source"):
+                return url.strip()
+    if urls and "," in urls[0]:
+        return urls[0].split(",", 1)[-1].strip()
+    return ""
+
+
+def _get_author(meta) -> str:
+    """Extract and clean the author name from package metadata."""
+    author = meta.get("Author") or meta.get("Author-email") or ""
+    if author:
+        author = _decode_header(author)
+        author = re.sub(r"\s*<[^>]+>", "", author).strip()  # nosec - no ReDoS: [^>]+ is unambiguous
+    return author
+
+
 def _get_package_info(name: str, version: str) -> dict:
     """Get package information from installed metadata or PyPI.
 
@@ -198,30 +223,12 @@ def _get_package_info(name: str, version: str) -> dict:
     """
     try:
         meta = get_metadata(name)
-        home_page = meta.get("Home-page") or ""
-        if not home_page:
-            urls = meta.get_all("Project-URL") or []
-            for url_entry in urls:
-                if "," in url_entry:
-                    label, url = url_entry.split(",", 1)
-                    label = label.strip().lower()
-                    if label in ("homepage", "home", "repository", "source"):
-                        home_page = url.strip()
-                        break
-            if not home_page and urls:
-                home_page = urls[0].split(",", 1)[-1].strip() if "," in urls[0] else ""
-        author = meta.get("Author") or ""
-        if not author:
-            author = meta.get("Author-email") or ""
-        author = _decode_header(author) if author else ""
-        author = re.sub(r"\s*<[^>]+>", "", author).strip()
-        license_str = _get_licence_from_metadata(meta)
         return {
             "name": meta["Name"],
             "version": meta["Version"],
-            "homePage": home_page,
-            "author": author,
-            "license": license_str,
+            "homePage": _get_home_page(meta),
+            "author": _get_author(meta),
+            "license": _get_licence_from_metadata(meta),
         }
     except PackageNotFoundError:
         return _get_package_info_from_pypi(name, version)
@@ -250,7 +257,7 @@ def _get_package_info_from_pypi(name: str, version: str) -> dict:
             data = json.loads(resp.read())
         pypi_info = data.get("info", {})
         info["author"] = pypi_info.get("author") or pypi_info.get("author_email") or ""
-        info["author"] = re.sub(r"\s*<[^>]+>", "", info["author"]).strip()
+        info["author"] = re.sub(r"\s*<[^>]+>", "", info["author"]).strip()  # nosec - no ReDoS: [^>]+ is unambiguous
         info["homePage"] = pypi_info.get("home_page") or pypi_info.get("project_url") or ""
         license_str = pypi_info.get("license") or ""
         if license_str and len(license_str.strip()) < 200:
