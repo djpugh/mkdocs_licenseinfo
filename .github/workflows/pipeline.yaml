@@ -1,11 +1,7 @@
 name: Pipeline
 on:
-  push:
-    branches-ignore:
-      - gh-pages
-    tags-ignore:
-      - docs-*
   pull_request:
+    types: [opened, synchronize, reopened]
   release:
     types: [published]
 concurrency:
@@ -113,11 +109,8 @@ jobs:
     needs:
       - changes
     if: >
-      (needs.changes.outputs.src || needs.changes.outputs.tools || needs.changes.outputs.root) ||
-      (github.event_name == 'pull_request' ) ||
-      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
-      (github.event_name == 'release')
-
+      github.event_name == 'pull_request' &&
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.tools)
     steps:
       - uses: actions/checkout@v6
       - name: Install uv
@@ -143,10 +136,8 @@ jobs:
     needs:
       - changes
     if: >
-      (needs.changes.outputs.src || needs.changes.outputs.tests || needs.changes.outputs.root || needs.changes.outputs.workflows) ||
-      (github.event_name == 'pull_request' ) ||
-      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
-      (github.event_name == 'release')
+      github.event_name == 'pull_request' &&
+      (needs.changes.outputs.src || needs.changes.outputs.tests || needs.changes.outputs.root || needs.changes.outputs.workflows)
 
     strategy:
       fail-fast: false
@@ -217,15 +208,6 @@ jobs:
       with:
         files: reports/*-test.xml
         comment_mode: "off"
-    - name: Configure testspace
-      uses: testspace-com/setup-testspace@v1
-      with:
-        domain: ${{ github.repository_owner }}
-      if: always()
-    - name: Push result to Testspace server
-      run: |
-        testspace reports/*-test.xml
-      if: always()
 
   sonarcloud:
     name: SonarCloud (${{ github.event_name }})
@@ -233,10 +215,8 @@ jobs:
     needs:
       - changes
     if: >
-      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows) ||
-      (github.event_name == 'pull_request' ) ||
-      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
-      (github.event_name == 'release')
+      github.event_name == 'pull_request' &&
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows)
 
     steps:
       - uses: actions/checkout@v6
@@ -261,10 +241,8 @@ jobs:
     needs:
       - changes
     if: >
-      (needs.changes.outputs.root || needs.changes.outputs.workflows) ||
-      (github.event_name == 'pull_request' && contains(github.base_ref, 'main')) ||
-      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
-      (github.event_name == 'release')
+      github.event_name == 'pull_request' &&
+      (needs.changes.outputs.root || needs.changes.outputs.workflows)
 
     steps:
       - name: Checkout code
@@ -293,10 +271,8 @@ jobs:
     needs:
       - changes
     if: >
-      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows) ||
-      (github.event_name == 'pull_request' ) ||
-      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
-      (github.event_name == 'release')
+      github.event_name == 'pull_request' &&
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows)
     permissions:
       actions: read
       contents: read
@@ -319,10 +295,8 @@ jobs:
     needs:
       - changes
     if: >
-      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows) ||
-      (github.event_name == 'pull_request' && contains(github.base_ref, 'main')) ||
-      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
-      (github.event_name == 'release')
+      github.event_name == 'release' ||
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.workflows)
     steps:
       - uses: actions/checkout@v6
         with:
@@ -352,10 +326,8 @@ jobs:
     needs:
       - changes
     if: >
-      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.docs || needs.changes.outputs.workflows) ||
-      (github.event_name == 'pull_request' && contains(github.base_ref, 'main')) ||
-      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
-      (github.event_name == 'release')
+      github.event_name == 'pull_request' &&
+      (needs.changes.outputs.src || needs.changes.outputs.root || needs.changes.outputs.docs || needs.changes.outputs.workflows)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -387,9 +359,8 @@ jobs:
       - build
       - test
     if: >
-      (github.event_name == 'pull_request' && contains(github.base_ref, 'main')) ||
-      (github.event_name == 'push' && (startsWith(github.ref, 'refs/tags') || contains(github.ref, 'main'))) ||
-      (github.event_name == 'release')
+      github.event_name == 'release' ||
+      (needs.build.result == 'success' && needs.test.result == 'success')
     runs-on: ${{ matrix.os }}-latest
     strategy:
       fail-fast: false
@@ -466,9 +437,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - ci-pass
-    if: >
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags') && !contains(github.ref, 'dev-')) ||
-      github.event_name == 'release'
+    if: github.event_name == 'release'
     environment:
       name: pypi
       url: https://pypi.org/p/mkdocs_licenseinfo
@@ -494,10 +463,7 @@ jobs:
     needs:
       - docs
       - publish-package
-    if: >
-      (github.event_name == 'push' &&
-        startsWith(github.ref, 'refs/tags')  && !(contains(github.ref, 'gh-pages') || contains(github.ref, 'docs') || contains(github.ref, 'dev-'))
-      ) || github.event_name == 'release'
+    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v6
         with:
