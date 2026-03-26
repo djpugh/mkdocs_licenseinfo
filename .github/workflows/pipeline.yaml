@@ -197,7 +197,13 @@ jobs:
         fail-on-error: false
     - name: Publish Test Results
       uses: EnricoMi/publish-unit-test-result-action@v2
-      if: always() && runner.os != 'Windows'
+      if: always() && runner.os == 'Linux'
+      with:
+        files: reports/*-test.xml
+        comment_mode: "off"
+    - name: Publish Test Results (macOS)
+      uses: EnricoMi/publish-unit-test-result-action/macos@v2
+      if: always() && runner.os == 'macOS'
       with:
         files: reports/*-test.xml
         comment_mode: "off"
