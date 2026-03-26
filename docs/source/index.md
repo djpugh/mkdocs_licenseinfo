@@ -5,6 +5,11 @@ For software supply chain security and legal compliance, it's important to make 
 
 ``mkdocs_licenseinfo`` can be used to generate sbom license info in ``mkdocs`` documentation automatically and without needing another commit.
 
+!!! note
+    As of this version, ``mkdocs_licenseinfo`` no longer depends on ``licensecheck``. Licence information is now
+    resolved directly from installed package metadata and PyPI, with dependency resolution handled via ``uv`` (with
+    a fallback to installed metadata). This removes the need to install ``licensecheck`` as a separate dependency.
+
 ## Using mkdocs_licenseinfo
 
 ### Configuration
@@ -63,7 +68,7 @@ The ``package_template`` option sets a ``jinja2`` template string to format the 
 The default template should be good, but if you have specific needs, you can create a custom template and define it in either the global or local config. The package object is passed in as ``package``:
 
 ```
-"# [{{package.name}}]({{package.homePage}})\n{% for license in package.licenses %}``{{license}}`` {% endfor %} \n*Version Checked: {{package.version}}*  \nAuthor: {{package.author}}"
+"# [{{package.name}}]({{package.homePage}})\n{% for license in package.licenses %}``{{license}}`` {% endfor %} \n*Version Checked: {{package.version}}*  \nAuthor: {{package.author}}{% if package.neededBy %}  \nNeeded by: {% for dep in package.neededBy %}``{{dep}}``{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}"
 ```
 
 #### Jinja Environment Customisation

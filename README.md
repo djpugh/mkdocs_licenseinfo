@@ -6,6 +6,8 @@ mkdocs extension to visualise package dependencies license information
 
 ## Introduction
 
+`mkdocs_licenseinfo` resolves licence information directly from installed package metadata and PyPI, with dependency resolution via `uv` (falling back to installed metadata). No external licence-checking tools are required.
+
 
 ## Contributing
 

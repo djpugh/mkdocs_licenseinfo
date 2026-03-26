@@ -1,0 +1,64 @@
+version: '3'
+
+includes:
+  docs:
+    taskfile: taskfiles/docs.yml
+    flatten: false
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list-all
+
+  setup:
+    desc: Install the project dependencies (with uv) and pre-commit hooks.
+    cmds:
+      - uv sync
+      - uv run pre-commit install
+
+  lint:
+    desc: Run the linter.
+    cmds:
+      - uv run ruff check src/
+
+  check:
+    desc: Run all the checks on the codebase.
+    cmds:
+      - task: check:precommit
+      - task: check:security
+
+  check:precommit:
+    desc: Run all the precommit checks on all files.
+    cmds:
+      - uv run pre-commit run -a
+
+  check:security:
+    desc: Run the security checks.
+    cmds:
+      - uv run bandit -r src
+
+  test:unit:
+    desc: Run the unit tests.
+    cmds:
+      - uv run pytest tests/unit -v
+
+  test:functional:
+    desc: Run the functional tests.
+    cmds:
+      - uv run pytest tests/functional -v
+
+  test:
+    desc: Run all the tests.
+    cmds:
+      - uv run pytest tests/unit tests/functional {{.CLI_ARGS}}
+
+  build:
+    desc: Build the distribution package.
+    cmds:
+      - uv build
+
+  publish:
+    desc: Publish the distribution package to PyPI.
+    cmds:
+      - uv publish
