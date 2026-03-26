@@ -91,6 +91,46 @@ def _read_deps_from_requirements(req_path: Path) -> list[str]:
     return deps
 
 
+def _parse_compile_line(line: str) -> tuple[str, str | tuple[str, str] | None]:
+    """Classify a single line from uv pip compile output.
+
+    Returns:
+        A tuple of (type, value) where type is 'package', 'via', or 'skip'.
+    """
+    stripped = line.strip()
+    if not stripped:
+        return ("skip", None)
+    match = re.match(r"^([a-zA-Z0-9_.-]+)==([^\s;]+)", stripped)
+    if match:
+        return ("package", (match.group(1), match.group(2)))
+    if stripped.startswith("# via"):
+        dep = stripped[5:].strip()
+        return ("via", dep) if dep else ("skip", None)
+    if stripped.startswith("#"):
+        dep = stripped.lstrip("#").strip()
+        return ("via", dep) if dep else ("skip", None)
+    return ("skip", None)
+
+
+def _parse_compile_output(output: str) -> list[tuple[str, str, list[str]]]:
+    """Parse uv pip compile output into (name, version, needed_by) tuples."""
+    packages = []
+    current_pkg = None
+    via: list[str] = []
+    for line in output.splitlines():
+        kind, value = _parse_compile_line(line)
+        if kind == "package":
+            if current_pkg:
+                packages.append((*current_pkg, via))
+            current_pkg = value
+            via = []
+        elif kind == "via" and current_pkg:
+            via.append(value)
+    if current_pkg:
+        packages.append((*current_pkg, via))
+    return packages
+
+
 def _resolve_deps(dep_specifiers: list[str]) -> list[tuple[str, str, list[str]]]:
     """Resolve dependency specifiers to concrete name-version pairs using uv.
 
@@ -111,32 +151,7 @@ def _resolve_deps(dep_specifiers: list[str]) -> list[tuple[str, str, list[str]]]
             timeout=120,
         )
         if result.returncode == 0:
-            packages = []
-            current_pkg = None
-            via = []
-            for line in result.stdout.splitlines():
-                stripped = line.strip()
-                if not stripped:
-                    continue
-                match = re.match(r"^([a-zA-Z0-9_.-]+)==([^\s;]+)", stripped)
-                if match:
-                    if current_pkg:
-                        packages.append((*current_pkg, via))
-                    current_pkg = (match.group(1), match.group(2))
-                    via = []
-                elif stripped.startswith("# via") and current_pkg:
-                    # "# via mkdocs" or "# via"
-                    rest = stripped[5:].strip()
-                    if rest:
-                        via.append(rest)
-                elif stripped.startswith("#") and current_pkg:
-                    # continuation: "#   jinja2"
-                    dep = stripped.lstrip("#").strip()
-                    if dep:
-                        via.append(dep)
-            if current_pkg:
-                packages.append((*current_pkg, via))
-            return packages
+            return _parse_compile_output(result.stdout)
     except (FileNotFoundError, subprocess.TimeoutExpired):
         pass
 
