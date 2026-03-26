@@ -431,12 +431,13 @@ jobs:
           path: dist
       - shell: bash
         run: |
-          pip install $(ls -t dist/*.whl | head -n1)
-          pip install pytest pytest-cov pytest-subtests
+          uv venv
+          uv pip install $(ls -t dist/*.whl | head -n1)
+          cd repo && uv pip install --group test
       - shell: bash
-        run: pytest ./repo/tests/unit
+        run: uv run pytest ./repo/tests/unit
       - shell: bash
-        run: pytest ./repo/tests/functional
+        run: uv run pytest ./repo/tests/functional
         env:
           GITHUB_TOKEN: ${{ github.token}}
 
