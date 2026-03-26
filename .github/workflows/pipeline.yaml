@@ -460,6 +460,8 @@ jobs:
   publish-docs:
     name: Publish Docs
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     needs:
       - docs
       - publish-package
