@@ -2,6 +2,10 @@
 # SCM versions
 src/mkdocs_licenseinfo/_version.py
 
+uv.lock
+
+.DS_Store
+
 # Compiled files
 *.pyc
 *.nfs*
